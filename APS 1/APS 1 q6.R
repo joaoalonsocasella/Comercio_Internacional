@@ -1,0 +1,363 @@
+# Script APS 1 Comércio Internacional | Grupo 5
+# Membros: Joao Casella, Paloma Ary, Sofia Barbuzza, Valentina Guida,
+# Victoria Saraiva
+
+# Questao 6
+
+#===============================================================================
+
+# Importando bibliotecas
+
+#install.packages("readr")
+library(readr)
+#install.packages("haven")
+library(haven)
+#install.packages("dplyr")
+library(dplyr)
+#install.packages("ggplot2")
+library(ggplot2)
+#install.packages("plotly")
+library(plotly)
+#install.packages("knitr")
+library(knitr)
+#install.packages("tidyr")
+library(tidyr)
+#install.packages("readxl")
+library(readxl)
+#install.packages("maps")
+library(maps)
+#install.packages("ggmap")
+library(ggmap)
+#install.packages("mapdata")
+library(mapdata)
+#install.packages("sf")
+library(sf)
+
+
+
+# Abrindo a base ITPD-E, lendo o arquivo .dta:
+itpde <- read_dta("C:/Users/jcase/OneDrive/João/Insper/6º semestre/Comércio Internacional/APS/APS1/com_int_aps1_dados/itpd.dta")
+
+
+
+# Criar um dataframe com o mapeamento dos IDs das industrias para as descricoes
+mapeamento_industrias <- data.frame(
+  ID = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+         21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+         41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60,
+         61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80,
+         81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100,
+         101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116,
+         117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132,
+         133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148,
+         149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164,
+         165, 166, 167, 168, 169, 170),
+  Industry_Description = c(
+    "Wheat", "Rice (raw)", "Corn", "Other cereals", "Cereal products", "Soybeans",
+    "Other oilseeds (excluding peanuts)", "Animal feed ingredients and pet foods",
+    "Raw and refined sugar and sugar crops", "Other sweeteners",
+    "Pulses and legumes, dried, preserved", "Fresh fruit", "Fresh vegetables",
+    "Prepared fruits and fruit juices", "Prepared vegetables", "Nuts",
+    "Live Cattle", "Live Swine", "Eggs", "Other meats, livestock products, and live animals",
+    "Cocoa and cocoa products", "Beverages, nec", "Cotton",
+    "Tobacco leaves and cigarettes", "Spices", "Other agricultural products, nec",
+    "Mining of hard coal", "Mining of lignite",
+    "Extraction crude petroleum and natural gas", "Mining of iron ores",
+    "Other mining and quarring", "Electricity production, collection, and distribution",
+    "Gas production and distribution", "Processing/preserving of meat",
+    "Processing/preserving of fish", "Processing/preserving of fruit & vegetables",
+    "Vegetable and animal oils and fats", "Dairy products", "Grain mill products",
+    "Starches and starch products", "Prepared animal feeds", "Bakery products", "Sugar",
+    "Cocoa chocolate and sugar confectionery", "Macaroni noodles & similar products",
+    "Other food products n.e.c.", "Distilling rectifying & blending of spirits",
+    "Wines", "Malt liquors and malt", "Soft drinks; mineral waters", "Tobacco products",
+    "Textile fibre preparation; textile weaving", "Made-up textile articles except apparel",
+    "Carpets and rugs", "Cordage rope twine and netting", "Other textiles n.e.c.",
+    "Knitted and crocheted fabrics and articles", "Wearing apparel except fur apparel",
+    "Dressing & dyeing of fur; processing of fur", "Tanning and dressing of leather",
+    "Luggage handbags etc.; saddlery & harness", "Footwear", "Sawmilling and planing of wood",
+    "Veneer sheets plywood particle board etc.", "Builders' carpentry and joinery",
+    "Wooden containers", "Other wood products; articles of cork/straw",
+    "Pulp paper and paperboard", "Corrugated paper and paperboard",
+    "Other articles of paper and paperboard", "Publishing of books and other publications",
+    "Publishing of newspapers journals etc.", "Publishing of recorded media", "Other publishing",
+    "Printing", "Service activities related to printing", "Reproduction of recorded media",
+    "Coke oven products", "Refined petroleum products", "Processing of nuclear fuel",
+    "Basic chemicals except fertilizers", "Fertilizers and nitrogen compounds",
+    "Plastics in primary forms; synthetic rubber", "Pesticides and other agro-chemical products",
+    "Paints varnishes printing ink and mastics", "Pharmaceuticals medicinal chemicals etc.",
+    "Soap cleaning & cosmetic preparations", "Other chemical products n.e.c.",
+    "Man-made fibres", "Rubber tyres and tubes", "Other rubber products", "Plastic products",
+    "Glass and glass products", "Pottery china and earthenware", "Refractory ceramic products",
+    "Struct.non-refractory clay; ceramic products", "Cement lime and plaster",
+    "Articles of concrete cement and plaster", "Cutting shaping & finishing of stone",
+    "Other non-metallic mineral products n.e.c.", "Basic iron and steel",
+    "Basic precious and non-ferrous metals", "Casting of iron and steel",
+    "Structural metal products", "Tanks reservoirs and containers of metal", "Steam generators",
+    "Cutlery hand tools and general hardware", "Other fabricated metal products n.e.c.",
+    "Engines & turbines (not for transport equipment)", "Pumps compressors taps and valves",
+    "Bearings gears gearing & driving elements", "Ovens furnaces and furnace burners",
+    "Lifting and handling equipment", "Other general purpose machinery",
+    "Agricultural and forestry machinery", "Machine tools", "Machinery for metallurgy",
+    "Machinery for mining & construction", "Food/beverage/tobacco processing machinery",
+    "Machinery for textile apparel and leather", "Weapons and ammunition",
+    "Other special purpose machinery", "Domestic appliances n.e.c.",
+    "Office accounting and computing machinery", "Electric motors generators and transformers",
+    "Electricity distribution & control apparatus", "Insulated wire and cable",
+    "Accumulators primary cells and batteries", "Lighting equipment and electric lamps",
+    "Other electrical equipment n.e.c.", "Electronic valves tubes etc.",
+    "TV/radio transmitters; line comm. apparatus", "TV and radio receivers and associated goods",
+    "Medical surgical and orthopaedic equipment",
+    "Measuring/testing/navigating appliances etc.",
+    "Optical instruments & photographic equipment", "Watches and clocks", "Motor vehicles",
+    "Automobile bodies trailers & semi-trailers", "Parts/accessories for automobiles",
+    "Building and repairing of ships", "Building/repairing of pleasure/sport. boats",
+    "Railway/tramway locomotives & rolling stock", "Aircraft and spacecraft", "Motorcycles",
+    "Bicycles and invalid carriages", "Other transport equipment n.e.c.", "Furniture",
+    "Jewellery and related articles", "Musical instruments", "Sports goods", "Games and toys",
+    "Other manufacturing n.e.c.", "Manufacturing services on physical inputs owned by others",
+    "Maintenance and repair services n.i.e.", "Transport", "Travel", "Construction",
+    "Insurance and pension services", "Financial services",
+    "Charges for the use of intellectual property n.i.e.",
+    "Telecommunications, computer, and information services", "Other business services",
+    "Heritage and recreational services", "Health services", "Education services",
+    "Government goods and services n.i.e.", "Services not allocated", "Trade-related services",
+    "Other personal services"
+  )
+)
+
+
+# COMERCIO INTRA-INDUSTRIA NA UE ===============================================
+
+# a)
+
+
+# Obter uma lista de codigos de paises da Uniao Europeia (UE)
+codigos_ue <- c("BEL", "BGR", "CYP", "CZE", "DEU", "DNK", "ESP", "EST", "FIN", "FRA", "GRC", "HRV", "HUN", "IRL", "ITA", "LTV", "LTU", "LUX", "MLT", "NLD", "POL", "PRT", "ROU", "SVK", "SVN", "SWE")
+
+# Criar a coluna "membro_UE"
+dados_dairy_ue <- itpde %>%
+  mutate(membro_UE = ifelse(is.na(exporter_iso3), "NAO", ifelse(exporter_iso3 %in% codigos_ue, "SIM", "NAO")))
+
+# Filtrar os dados para os anos de 2010 a 2016 e apenas para "membro_UE" igual a "SIM"
+dados_dairy_ue <- dados_dairy_ue %>%
+  filter(year >= 2010 & year <= 2016, membro_UE == "SIM")
+
+
+#Apenas incluir exportacoes, ou seja, onde o pais exportador e importador sao diferentes
+dados_exp <- dados_dairy_ue %>%
+  filter(exporter_iso3 != importer_iso3)
+
+
+# Agrupar e resumir os dados por ano, pais exportador e industria + calcular exportacoes totais em bilhoes
+dados_exp <- dados_exp %>%
+  group_by(year, exporter_iso3, industry_id) %>%
+  summarize(total_export = sum(trade) / 1e9) # Dividir por 1 bilhao para obter bilhoes de dolares
+
+
+#Apenas incluir importacoes, ou seja, onde o pais exportador e importador sao iguais
+dados_imp <- dados_dairy_ue %>%
+  filter(exporter_iso3 == importer_iso3)
+
+
+# Agrupar e resumir os dados por ano, pais importador e industria + calcular importacoes totais em bilhoes
+dados_imp <- dados_imp %>%
+  group_by(year, exporter_iso3, industry_id) %>%
+  summarize(total_import = sum(trade) / 1e9) # Dividir por 1 bilhao para obter bilhoes de dolares
+
+
+# Colocando os dados de Exportacao e Importacao na base filtrada
+dados_dairy_ue <- left_join(dados_dairy_ue, dados_exp %>% select(year, exporter_iso3, industry_id, total_export), 
+                           by = c("year", "exporter_iso3", "industry_id"))
+
+dados_dairy_ue <- left_join(dados_dairy_ue, dados_imp %>% select(year, exporter_iso3, industry_id, total_import), 
+                           by = c("year", "exporter_iso3", "industry_id"))
+
+
+# Incluindo a descricao de cada codigo de industria
+mapeamento_industrias <- rename(mapeamento_industrias, industry_id = ID)
+dados_dairy_ue <- left_join(dados_dairy_ue, mapeamento_industrias, by = "industry_id")
+
+
+
+# b)
+
+# Filtrar os dados para incluir apenas a industria "Dairy products"
+dados_dairy_ue <- dados_dairy_ue %>%
+  filter(Industry_Description == "Dairy products")
+
+# Calcular o Indice de Grubel and Lloyd para a industria "Dairy products"
+dados_dairy_ue <- dados_dairy_ue %>%
+  mutate(
+    GLij = 1 - abs(total_export - total_import) / (total_export + total_import)
+  )
+
+
+# Remover linhas com valores NA na coluna "GLij" - completando com a media da coluna
+dados_dairy_ue <- dados_dairy_ue[complete.cases(dados_dairy_ue$GLij), ]
+
+
+# Calcular estatisticas descritivas para o indice GLij
+desc_stats_dairy <- dados_dairy_ue %>%
+  summarize(
+    Mean_GLij = mean(GLij),
+    StdDev_GLij = sd(GLij),
+    Min_GLij = min(GLij),
+    Max_GLij = max(GLij)
+  )
+
+# Exibir estatisticas descritivas
+print(desc_stats_dairy)
+
+# Identificar paises com alto e baixo comercio intra-industria na industria "Dairy products"
+high_trade_dairy <- dados_dairy_ue %>%
+  filter(GLij > mean(GLij)) # Paises com indices acima da media
+
+low_trade_dairy <- dados_dairy_ue %>%
+  filter(GLij < mean(GLij)) # Paises com indices abaixo da media 
+
+#View(high_trade_dairy)
+#View(low_trade_dairy)
+
+# HISTOGRAMAS
+
+histogram_high_trade_dairy <- ggplot(high_trade_dairy, aes(x = exporter_iso3, y = GLij)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  labs(title = "Histograma de GLij por País (High Trade - Dairy)",
+       x = "Paises (Codigo Pais)",
+       y = "GLij") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotacionar rotulos do eixo x
+
+histogram_low_trade_dairy <- ggplot(low_trade_dairy, aes(x = exporter_iso3, y = GLij)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  labs(title = "Histograma de GLij por País (Low Trade - Dairy)",
+       x = "Paises (Codigo Pais)",
+       y = "GLij") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotacionar rotulos do eixo x
+
+
+# Exibir o histograma
+print(histogram_high_trade_dairy)
+print(histogram_low_trade_dairy)
+
+
+# Criando a coluna "trade_cat" que classifica os fluxos de troca entre Low Trade e High Trade
+dados_dairy_ue <- dados_dairy_ue %>%
+  mutate(
+    trade_cat = ifelse(GLij>desc_stats_dairy$Mean_GLij, "High Trade", "Low Trade")
+  )
+
+
+# Encontrar o país com o menor índice GLij
+pais_com_menor_GLIj <- dados_dairy_ue %>%
+  filter(GLij == min(GLij)) %>%
+  select(exporter_iso3, importer_iso3, year, membro_UE, GLij, trade_cat)
+
+# Encontrar o país com o maior índice GLij
+pais_com_maior_GLIj <- dados_dairy_ue %>%
+  filter(GLij == max(GLij)) %>%
+  select(exporter_iso3, importer_iso3, year, membro_UE, GLij, trade_cat)
+
+# Exibir os países com o menor e o maior índice GLij
+print("País com o menor índice GLij:")
+print(pais_com_menor_GLIj)
+
+print("País com o maior índice GLij:")
+print(pais_com_maior_GLIj)
+
+
+# c)
+
+# Obter uma lista de codigos de paises da Uniao Europeia (UE)
+codigos_ue <- c("BEL", "BGR", "CYP", "CZE", "DEU", "DNK", "ESP", "EST", "FIN", "FRA", "GRC", "HRV", "HUN", "IRL", "ITA", "LTV", "LTU", "LUX", "MLT", "NLD", "POL", "PRT", "ROU", "SVK", "SVN", "SWE")
+
+# Lista de codigos de paises africanos
+codigos_africanos <- c("DZA", "AGO", "BEN", "BWA", "BFA", "BDI", "CMR", "CPV", "CAF", "TCD", "COM", "COG", "DJI", "EGY", "GNQ", "ERI", "SWZ", "ETH", "GAB", "GMB", "GHA", "GIN", "GNB", "CIV", "KEN", "LSO", "LBR", "LBY", "MDG", "MWI", "MLI", "MRT", "MUS", "MAR", "MOZ", "NAM", "NER", "NGA", "RWA", "STP", "SEN", "SYC", "SLE", "SOM", "ZAF", "SSD", "SDN", "TZA", "TGO", "TUN", "UGA", "ZMB", "ZWE")
+
+# Criar a coluna "regiao" para classificar países em "UE" e "Africa"
+dados_dairy_ue <- itpde %>%
+  mutate(regiao = ifelse(exporter_iso3 %in% codigos_ue | importer_iso3 %in% codigos_ue, "UE", ifelse(exporter_iso3 %in% codigos_africanos | importer_iso3 %in% codigos_africanos, "Africa", "Outros")))
+
+
+# Filtrar os dados para os anos de 2010 a 2016 e apenas para "regiao" igual a "UE" ou "Africa"
+dados_dairy_ue <- dados_dairy_ue %>%
+  filter(year >= 2010 & year <= 2016, regiao %in% c("UE", "Africa"))
+
+
+#Apenas incluir exportacoes, ou seja, onde o pais exportador e importador sao diferentes
+dados_exp <- dados_dairy_ue %>%
+  filter(exporter_iso3 != importer_iso3)
+
+
+# Agrupar e resumir os dados por ano, pais exportador e industria + calcular exportacoes totais em bilhoes
+dados_exp <- dados_exp %>%
+  group_by(year, exporter_iso3, industry_id) %>%
+  summarize(total_export = sum(trade) / 1e9) # Dividir por 1 bilhao para obter bilhoes de dolares
+
+
+#Apenas incluir importacoes, ou seja, onde o pais exportador e importador sao iguais
+dados_imp <- dados_dairy_ue %>%
+  filter(exporter_iso3 == importer_iso3)
+
+
+# Agrupar e resumir os dados por ano, pais importador e industria + calcular importacoes totais em bilhoes
+dados_imp <- dados_imp %>%
+  group_by(year, exporter_iso3, industry_id) %>%
+  summarize(total_import = sum(trade) / 1e9) # Dividir por 1 bilhao para obter bilhoes de dolares
+
+
+# Colocando os dados de Exportacao e Importacao na base filtrada
+dados_dairy_ue <- left_join(dados_dairy_ue, dados_exp %>% select(year, exporter_iso3, industry_id, total_export), 
+                            by = c("year", "exporter_iso3", "industry_id"))
+
+dados_dairy_ue <- left_join(dados_dairy_ue, dados_imp %>% select(year, exporter_iso3, industry_id, total_import), 
+                            by = c("year", "exporter_iso3", "industry_id"))
+
+
+# Incluindo a descrição de cada codigo de industria
+mapeamento_industrias <- rename(mapeamento_industrias, industry_id = ID)
+dados_dairy_ue <- left_join(dados_dairy_ue, mapeamento_industrias, by = "industry_id")
+
+
+# Filtrar os dados para incluir apenas a industria "Dairy products"
+dados_dairy_ue <- dados_dairy_ue %>%
+  filter(Industry_Description == "Dairy products")
+
+
+# Vamos calcular o indice GLij novamente para a nova filtragem
+dados_dairy_ue <- dados_dairy_ue %>%
+  group_by(year, regiao, Industry_Description) %>%
+  summarize(
+    total_export = sum(total_export, na.rm = TRUE),
+    total_import = sum(total_import, na.rm = TRUE),
+    GLij = 1 - abs(total_export - total_import) / (total_export + total_import)
+  )
+
+# Remover linhas com valores NA na coluna "GLij" - completando com a media da coluna
+dados_dairy_ue <- dados_dairy_ue[complete.cases(dados_dairy_ue$GLij), ]
+
+# Calcular estatisticas descritivas para o indice GLij por regiao (UE vs. Africa)
+desc_stats_dairy_regiao <- dados_dairy_ue %>%
+  group_by(regiao) %>%
+  summarize(
+    Mean_GLij = mean(GLij),
+    StdDev_GLij = sd(GLij),
+    Min_GLij = min(GLij),
+    Max_GLij = max(GLij)
+  )
+
+# Exibir estatisticas descritivas por regiao
+print(desc_stats_dairy_regiao)
+
+# Comparar o comercio intra-industria entre UE e Africa para a industria "Dairy products"
+ggplot(data = dados_dairy_ue, aes(x = regiao, y = GLij, fill = regiao)) +
+  geom_boxplot() +
+  labs(title = "Comparacao de Comercio Intra-Industria (Dairy) entre UE e Africa",
+       x = "Regiao",
+       y = "Indice de Comercio Intra-Industria (GLij)",
+       fill = "Região") +
+  theme_minimal()
+
+

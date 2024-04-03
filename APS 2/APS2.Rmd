@@ -1,0 +1,493 @@
+---
+title: "APS2 Comercio"
+author: "Joao Casella, Paloma Ary, Sofia Barbuzza, Valentina Guida, Victoria Saraiva"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+fig_width: 2
+fig_height: 2
+fontsize: 8pt
+---
+```{r,echo=TRUE}
+
+library(dplyr)
+library(ggplot2)
+
+#install.packages("plm")
+library(plm)
+
+
+```
+
+```{r,echo=TRUE}
+
+
+# 1.
+
+#a)
+dataframes <- list()
+for (i in 1:5) {
+  file_path <- paste0("C:/Users/jcase/OneDrive/Joao/Insper/6 semestre/Comercio Internacional/APS/APS2/com_int_aps2_dados/dados/Isic_bilateral_trade_", i, ".csv")
+  data <- read.csv(file_path, header = TRUE)
+  dataframes[[i]] <- data
+}
+
+Isic <- bind_rows(dataframes)
+str(Isic)
+
+Isic = na.omit(Isic)
+```
+
+```{r,echo=TRUE}
+
+# Leitura dos outros conjuntos de dados (distance.csv, languages.csv, border.csv, GDP.csv, island_landlocked.csv)
+
+caminho_1 <- "C:/Users/jcase/OneDrive/Joao/Insper/6 semestre/Comercio Internacional/APS/APS2/com_int_aps2_dados/dados/distance.csv"
+caminho_2 <- "C:/Users/jcase/OneDrive/Joao/Insper/6 semestre/Comercio Internacional/APS/APS2/com_int_aps2_dados/dados/languages.csv"
+caminho_3 <- "C:/Users/jcase/OneDrive/Joao/Insper/6 semestre/Comercio Internacional/APS/APS2/com_int_aps2_dados/dados/border.csv"
+caminho_4 <- "C:/Users/jcase/OneDrive/Joao/Insper/6 semestre/Comercio Internacional/APS/APS2/com_int_aps2_dados/dados/GDP.csv"
+caminho_5 <- "C:/Users/jcase/OneDrive/Joao/Insper/6 semestre/Comercio Internacional/APS/APS2/com_int_aps2_dados/dados/island_landlocked.csv"
+
+distance <- read.csv(caminho_1, header = TRUE)
+languages <- read.csv(caminho_2, header = TRUE)
+border <- read.csv(caminho_3, header = TRUE)
+GDP <- read.csv(caminho_4, header = TRUE)
+island_landlocked <- read.csv(caminho_5, header = TRUE)
+
+```
+
+```{r,echo=TRUE}
+
+Isic <- left_join(Isic, distance, by = c("ccode", "pcode")) %>%
+  left_join(., languages, by = c("ccode", "pcode")) %>%
+  left_join(., border, by = c("ccode", "pcode")) %>%
+  left_join(., GDP, by = c("ccode", "year")) %>%
+  left_join(., island_landlocked, by = "ccode")
+
+
+```
+
+```{r,echo=TRUE}
+
+Isic <- Isic %>%
+  group_by(ccode,pcode, year) %>%
+  summarise(
+    exp_tv = sum(exp_tv, na.rm = TRUE),
+    exp_q = sum(exp_q, na.rm = TRUE),
+    exp_uv = mean(exp_uv, na.rm = TRUE),
+    imp_tv = sum(imp_tv, na.rm = TRUE),
+    imp_q = sum(imp_q, na.rm = TRUE),
+    imp_uv = mean(imp_uv, na.rm = TRUE),
+    km = mean(km, na.rm = TRUE),
+    lang1 = first(lang1),
+    lang2 = first(lang2),
+    com_lang = first(com_lang),
+    border = first(border),
+    gdp_c2000 = first(gdp_c2000),
+    gdp_current = first(gdp_current),
+    gdp_pcppp_c2000 = first(gdp_pcppp_c2000),
+    gdp_pcppp_current = first(gdp_pcppp_current),
+    ldlock = first(ldlock),
+    island = first(island)
+  )
+
+Isic
+
+```
+
+
+
+```{r,echo=TRUE}
+
+#b)
+# Criar variavel dummy para o comercio intra-MERCOSUL
+Isic$intra_mercosul <- ifelse(Isic$ccode %in% c("BRA", "ARG", "URY", "PRY") & Isic$pcode %in% c("BRA","ARG","URY","PRY") & Isic$year >= 1991, 1, 0)
+
+# Criar variavel dummy para as importacoes de cada pais do MERCOSUL em relacao ao resto do mundo
+Isic$import_mercosul <- ifelse(Isic$ccode %in% c("BRA", "ARG", "URY", "PRY") &  !(Isic$pcode %in% c("BRA", "ARG", "URY", "PRY")) & 
+  Isic$year >= 1991, 1, 0)
+
+
+Isic <- Isic %>%
+  group_by(year) %>%
+  mutate(imp_tv_intra_mercosul = sum(imp_tv * import_mercosul))
+
+
+Isic <- Isic %>%
+  group_by(year) %>%
+  mutate(imp_tv_ext_mercosul = sum(imp_tv * (1-import_mercosul)))
+
+Isic <- Isic %>%
+  group_by(year)%>%
+  mutate(razao_imp_tv_mercosulVSext = imp_tv_intra_mercosul/imp_tv_ext_mercosul )
+
+head(Isic)
+
+```
+
+```{r,echo=TRUE}
+
+
+par(mfrow = c(1, 2))
+
+# Grafico 1
+ggplot(subset(Isic, year >= 1990), aes(x = year, y = imp_tv_intra_mercosul)) +
+  geom_line(linewidth = 1.2, color = "darkgreen") +
+  labs(title = "Evolucao Temporal das Importacoes Intra-MERCOSUL",
+       x = "Ano",
+       y = "Valor de Importacoes") +
+  theme_minimal()
+
+# Grafico 2
+ggplot(subset(Isic, year >= 1990), aes(x = year, y = razao_imp_tv_mercosulVSext)) +
+  geom_line(linewidth = 1.2, color = "orange") +
+  labs(title = "Importacoes do MERCOSUL em relacao ao Resto do Mundo",
+       x = "Ano",
+       y = "Razao") +
+  theme_minimal()
+
+
+
+```
+```{r,echo=TRUE}
+
+# 2.
+
+#a) Perceba que colocar as dummies no modelo nao restringe ela a apenas o bloco, ja que os seus valores podem ser 0 ou 1
+
+
+# Converter as variaveis para o formato adequado para dados em painel
+Isic_panel <- pdata.frame(Isic, index = c("ccode", "pcode", "year"), drop.index = TRUE)
+
+# Estimar o modelo de gravidade com efeitos fixos
+modelo_gravidade <- plm(imp_tv ~ log(gdp_current) + log(gdp_pcppp_current) + log(km) +
+                          com_lang + border + island + intra_mercosul + import_mercosul,
+                        data = Isic_panel,
+                        model = "within")
+
+# Visualizar os resultados
+summary(modelo_gravidade)
+
+
+
+# b) Puramente interpretativa. Nao requer codigo
+
+```
+```{r,echo=TRUE}
+
+# 3.
+
+#a)
+
+# Adicione dummies de ano
+dummies_ano <- model.matrix(~factor(Isic$year) - 1)
+selected_columns <- grep("199[1-9]|20[0-9][0-9]", colnames(dummies_ano), value = TRUE)
+dummies_ano <- dummies_ano[, selected_columns]
+colnames(dummies_ano) <- gsub("factor\\(Isic\\$year\\)", "Dummy_", colnames(dummies_ano))
+Isic <- cbind(Isic, dummies_ano)
+
+head(Isic)
+
+
+```
+
+```{r,echo=TRUE}
+
+anos_para_iterar <- levels(factor(Isic$year))[levels(factor(Isic$year)) >= "1991"]
+
+# Loop para interagir cada dummy de ano com intra_mercosul e import_mercosul
+for (ano in anos_para_iterar) {
+  nome_dummy <- paste0("Dummy_", ano)
+  nome_interacao_intra <- paste0("Interacao_", ano, "_intra_mercosul")
+  nome_interacao_import <- paste0("Interacao_", ano, "_import_mercosul")
+  
+  Isic <- Isic %>%
+    mutate(!!nome_interacao_intra := .data[[nome_dummy]] * intra_mercosul,
+           !!nome_interacao_import := .data[[nome_dummy]] * import_mercosul)
+}
+
+
+head(Isic)
+
+
+```
+
+
+```{r,echo=TRUE}
+
+
+# Converter as variaveis para o formato adequado para dados em painel
+Isic_panel <- pdata.frame(Isic, index = c("ccode", "pcode", "year"), drop.index = TRUE)
+
+head(Isic_panel)
+
+```
+
+
+```{r,echo=TRUE}
+# Adicione as interacoes de ano e MERCOSUL ao modelo de gravidade
+modelo_gravidade_com_interacoes <- plm(imp_tv ~ log(gdp_current) + log(gdp_pcppp_current) + log(km) +
+                                          com_lang + border + island + intra_mercosul + import_mercosul +
+                                          Interacao_1991_intra_mercosul + Interacao_1991_import_mercosul +
+                                          Interacao_1992_intra_mercosul + Interacao_1992_import_mercosul +
+                                          Interacao_1993_intra_mercosul + Interacao_1993_import_mercosul +
+                                          Interacao_1994_intra_mercosul + Interacao_1994_import_mercosul +
+                                          Interacao_1995_intra_mercosul + Interacao_1995_import_mercosul +
+                                          Interacao_1996_intra_mercosul + Interacao_1996_import_mercosul +
+                                          Interacao_1997_intra_mercosul + Interacao_1997_import_mercosul +
+                                          Interacao_1998_intra_mercosul + Interacao_1998_import_mercosul +
+                                          Interacao_1999_intra_mercosul + Interacao_1999_import_mercosul +
+                                          Interacao_2000_intra_mercosul + Interacao_2000_import_mercosul +
+                                          Interacao_2001_intra_mercosul + Interacao_2001_import_mercosul +
+                                          Interacao_2002_intra_mercosul + Interacao_2002_import_mercosul +
+                                          Interacao_2003_intra_mercosul + Interacao_2003_import_mercosul +
+                                          Interacao_2004_intra_mercosul + Interacao_2004_import_mercosul,
+                                        data = Isic_panel,
+                                        model = "within")
+
+# Visualizar os resultados
+summary(modelo_gravidade_com_interacoes)
+
+
+
+```
+```{r,echo=TRUE}
+
+# b)
+
+# Grafico Coeficientes Interacoes - Tudo junto
+
+
+coeficientes_interacao <- coef(modelo_gravidade_com_interacoes)
+
+
+coeficientes_interacao_mercosul_ano <- coeficientes_interacao[grep("Interacao_\\d{4}_", names(coeficientes_interacao))]
+
+
+resultados_interacao <- data.frame(Ano = as.numeric(gsub("Interacao_(\\d{4})_.*", "\\1", names(coeficientes_interacao_mercosul_ano))),
+                                   Coeficiente = coeficientes_interacao_mercosul_ano)
+
+
+ggplot(resultados_interacao, aes(x = Ano, y = Coeficiente)) +
+  geom_line(linewidth = 1.2, color = "blue") +
+  labs(title = "Evolucao Temporal dos Coeficientes de Interacao MERCOSUL-Ano",
+       x = "Ano",
+       y = "Coeficiente") +
+  theme_minimal()
+
+
+
+```
+
+```{r,echo=TRUE}
+
+# Graficos Coeficientes Interacoes - Separando por Intra-MERCOSUL e Extra-MERCOSUL
+
+coeficientes_interacao <- coef(modelo_gravidade_com_interacoes)
+
+
+coeficientes_interacao_mercosul_ano <- coeficientes_interacao[grep("Interacao_\\d{4}_", names(coeficientes_interacao))]
+
+
+interacoes_intra_mercosul <- coeficientes_interacao_mercosul_ano[grep("_intra_mercosul", names(coeficientes_interacao_mercosul_ano))]
+interacoes_import_mercosul <- coeficientes_interacao_mercosul_ano[grep("_import_mercosul", names(coeficientes_interacao_mercosul_ano))]
+
+
+resultados_intra_mercosul <- data.frame(Ano = as.numeric(gsub("Interacao_(\\d{4})_.*", "\\1", names(interacoes_intra_mercosul))),
+                                       Coeficiente = interacoes_intra_mercosul)
+
+resultados_import_mercosul <- data.frame(Ano = as.numeric(gsub("Interacao_(\\d{4})_.*", "\\1", names(interacoes_import_mercosul))),
+                                         Coeficiente = interacoes_import_mercosul)
+
+
+par(mfrow = c(1, 2))
+
+ggplot(resultados_intra_mercosul, aes(x = Ano, y = Coeficiente)) +
+  geom_line(linewidth = 1.2, color = "green") +
+  labs(title = "Evolucao coeficientes de Interacao MERCOSUL-Ano (intra_mercosul)",
+       x = "Ano",
+       y = "Coeficiente") +
+  theme_minimal()
+
+
+ggplot(resultados_import_mercosul, aes(x = Ano, y = Coeficiente)) +
+  geom_line(linewidth = 1.2, color = "purple") +
+  labs(title = "Evolucao coeficientes de Interacao MERCOSUL-Ano (import_mercosul)",
+       x = "Ano",
+       y = "Coeficiente") +
+  theme_minimal()
+
+```
+
+```{r,echo=TRUE}
+# 4.
+
+# a) e b)
+
+
+# Criar variavel dummy para as exportacoes do MERCOSUL para o resto do mundo
+Isic$export_mercosul_ext <- ifelse(Isic$pcode %in% c("BRA", "ARG", "URY", "PRY") &  !(Isic$ccode %in% c("BRA", "ARG", "URY", "PRY")) & Isic$year >= 1991, 1, 0)
+
+Isic <- Isic %>%
+  group_by(year) %>%
+  mutate(exp_tv_mercosul_ext = sum(exp_tv * export_mercosul_ext))
+
+```
+
+
+```{r,echo=TRUE}
+
+# 4.b) 1.c
+
+# Grafico
+ggplot(subset(Isic, year >= 1990), aes(x = year, y = exp_tv_mercosul_ext)) +
+  geom_line(linewidth = 1.2, color = "brown") +
+  labs(title = "Exportacoes MERCOSUL para o Resto do Mundo",
+       x = "Ano",
+       y = "Valor de Exportacoes") +
+  theme_minimal()
+
+```
+
+
+```{r,echo=TRUE}
+
+# Converter dados para o formato correto
+Isic_panel <- pdata.frame(Isic, index = c("ccode", "pcode", "year"), drop.index = TRUE)
+
+head(Isic_panel)
+
+```
+
+```{r,echo=TRUE}
+
+# 4.b) 2.b
+
+# Adicione as interacoes de ano e MERCOSUL ao modelo de gravidade
+modelo_gravidade_com_exp <- plm(imp_tv ~ log(gdp_current) + log(gdp_pcppp_current) + log(km) +
+                                          com_lang + border + island + intra_mercosul + import_mercosul +
+                                          Interacao_1991_intra_mercosul + Interacao_1991_import_mercosul +
+                                          Interacao_1992_intra_mercosul + Interacao_1992_import_mercosul +
+                                          Interacao_1993_intra_mercosul + Interacao_1993_import_mercosul +
+                                          Interacao_1994_intra_mercosul + Interacao_1994_import_mercosul +
+                                          Interacao_1995_intra_mercosul + Interacao_1995_import_mercosul +
+                                          Interacao_1996_intra_mercosul + Interacao_1996_import_mercosul +
+                                          Interacao_1997_intra_mercosul + Interacao_1997_import_mercosul +
+                                          Interacao_1998_intra_mercosul + Interacao_1998_import_mercosul +
+                                          Interacao_1999_intra_mercosul + Interacao_1999_import_mercosul +
+                                          Interacao_2000_intra_mercosul + Interacao_2000_import_mercosul +
+                                          Interacao_2001_intra_mercosul + Interacao_2001_import_mercosul +
+                                          Interacao_2002_intra_mercosul + Interacao_2002_import_mercosul +
+                                          Interacao_2003_intra_mercosul + Interacao_2003_import_mercosul +
+                                          Interacao_2004_intra_mercosul + Interacao_2004_import_mercosul +
+                                          export_mercosul_ext,
+                                        data = Isic_panel,
+                                        model = "within")
+
+
+# Visualizar os resultados
+summary(modelo_gravidade_com_exp)
+
+
+
+```
+```{r,echo=TRUE}
+
+anos_para_iterar <- levels(factor(Isic$year))[levels(factor(Isic$year)) >= "1991"]
+
+# Loop para interagir cada dummy de ano com export_mercosul_ext
+for (ano in anos_para_iterar) {
+  nome_dummy <- paste0("Dummy_", ano)
+  nome_interacao_exp <- paste0("Interacao_", ano, "_export_mercosul_ext")
+  
+  Isic <- Isic %>%
+    mutate(!!nome_interacao_exp := .data[[nome_dummy]] * export_mercosul_ext)
+}
+
+
+head(Isic)
+
+
+```
+
+
+```{r,echo=TRUE}
+
+
+# Converter as variaveis para o formato adequado para dados em painel
+Isic_panel <- pdata.frame(Isic, index = c("ccode", "pcode", "year"), drop.index = TRUE)
+
+head(Isic_panel)
+
+
+```
+
+```{r,echo=TRUE}
+
+# 4.b) 3.a
+
+modelo_gravidade_com_interacoes_exp <- plm(imp_tv ~ log(gdp_current) + log(gdp_pcppp_current) + log(km) +
+                                          com_lang + border + island + intra_mercosul + import_mercosul +
+                                          Interacao_1991_intra_mercosul + Interacao_1991_import_mercosul +
+                                          Interacao_1992_intra_mercosul + Interacao_1992_import_mercosul +
+                                          Interacao_1993_intra_mercosul + Interacao_1993_import_mercosul +
+                                          Interacao_1994_intra_mercosul + Interacao_1994_import_mercosul +
+                                          Interacao_1995_intra_mercosul + Interacao_1995_import_mercosul +
+                                          Interacao_1996_intra_mercosul + Interacao_1996_import_mercosul +
+                                          Interacao_1997_intra_mercosul + Interacao_1997_import_mercosul +
+                                          Interacao_1998_intra_mercosul + Interacao_1998_import_mercosul +
+                                          Interacao_1999_intra_mercosul + Interacao_1999_import_mercosul +
+                                          Interacao_2000_intra_mercosul + Interacao_2000_import_mercosul +
+                                          Interacao_2001_intra_mercosul + Interacao_2001_import_mercosul +
+                                          Interacao_2002_intra_mercosul + Interacao_2002_import_mercosul +
+                                          Interacao_2003_intra_mercosul + Interacao_2003_import_mercosul +
+                                          Interacao_2004_intra_mercosul + Interacao_2004_import_mercosul +
+                                          export_mercosul_ext + Interacao_1991_export_mercosul_ext +
+                                          Interacao_1992_export_mercosul_ext + Interacao_1993_export_mercosul_ext +
+                                          Interacao_1994_export_mercosul_ext + Interacao_1995_export_mercosul_ext +
+                                          Interacao_1996_export_mercosul_ext + Interacao_1997_export_mercosul_ext +
+                                          Interacao_1998_export_mercosul_ext + Interacao_1999_export_mercosul_ext +
+                                          Interacao_2000_export_mercosul_ext + Interacao_2001_export_mercosul_ext +
+                                          Interacao_2002_export_mercosul_ext + Interacao_2003_export_mercosul_ext +
+                                          Interacao_2004_export_mercosul_ext,
+                                        data = Isic_panel,
+                                        model = "within")
+
+# Visualizar os resultados
+summary(modelo_gravidade_com_interacoes_exp)
+
+
+```
+
+```{r,echo=TRUE}
+
+# 4.b) 3.b
+
+
+coeficientes_interacao <- coef(modelo_gravidade_com_interacoes_exp)
+
+coef_interacao_mercosul_ano <- coeficientes_interacao[grep("^Interacao_\\d{4}_export_mercosul_ext", names(coeficientes_interacao))]
+
+anos <- as.numeric(gsub("^Interacao_(\\d{4})_export_mercosul_ext", "\\1", names(coef_interacao_mercosul_ano)))
+valores <- coef_interacao_mercosul_ano
+
+dados_grafico <- data.frame(Ano = anos, Coeficiente = valores)
+
+
+ggplot(dados_grafico, aes(x = Ano, y = Coeficiente)) +
+  geom_line(linewidth = 0.5, color = "darkcyan") +
+  geom_point() +
+  labs(title = "Coeficiente da Interacao MERCOSUL-ano com exportacoes",
+       x = "Ano",
+       y = "Coeficiente") +
+  scale_x_continuous(breaks = seq(min(anos), max(anos), by = 1)) +
+  theme_minimal()
+
+
+
+```
+
+
+
+
